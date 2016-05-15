@@ -13,25 +13,41 @@ public struct API {
     }
 
     public func request(HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil, auth: Bool = false) -> NSMutableURLRequest {
-        let request = Net.request(HTTPMethod, URLWithPath(path), fields, JPEGData)
+        let request = HTTP.request(HTTPMethod, URLWithPath(path), fields, JPEGData)
         if auth { authorizeRequest(request) }
         return request
     }
 
-    public static func dataTaskWithRequest(request: NSURLRequest, _ completionHandler: (AnyObject?, Int?, NSError?) -> Void) -> NSURLSessionDataTask {
-        return NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
-            let JSONObject = data != nil ? try? NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions(rawValue: 0)) : nil
-            let statusCode = (response as! NSHTTPURLResponse?)?.statusCode
-            completionHandler(JSONObject, statusCode, error)
-        }
+    public func authorizeRequest(request: NSMutableURLRequest) {
+        request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization")
     }
 
-    private func authorizeRequest(request: NSMutableURLRequest) {
-        request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization")
+    public static func dataTaskWithRequest(request: NSURLRequest, completionHandler: (AnyObject?, NSHTTPURLResponse?, NSError?) -> Void) -> NSURLSessionDataTask {
+        return NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, var error) in
+            var JSONObject: AnyObject?
+            let response = response as! NSHTTPURLResponse?
+            if let data = data {
+                JSONObject = try? NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions(rawValue: 0))
+                let statusCode = response!.statusCode
+                if !(200 <= statusCode && statusCode <= 299) { // unsuccessful
+                    var userInfo: [NSObject : AnyObject]? = [:]
+                    if let dictionary = JSONObject as! Dictionary<String, String>? {
+                        userInfo![NSLocalizedDescriptionKey]             = dictionary["title"] ?? "Error"
+                        userInfo![NSLocalizedRecoverySuggestionErrorKey] = dictionary["message"]
+                    } else {
+                        userInfo![NSLocalizedDescriptionKey]             = "Status Code: \(statusCode)"
+                        userInfo![NSLocalizedRecoverySuggestionErrorKey] = NSHTTPURLResponse.localizedStringForStatusCode(statusCode)
+                    }
+                    if userInfo!.isEmpty { userInfo = nil }
+                    error = NSError(domain: NSHTTPURLResponseError, code: statusCode, userInfo: userInfo)
+                }
+            }
+            completionHandler(JSONObject, response, error)
+        }
     }
 }
 
-public struct Net {
+public struct HTTP {
     public static func request(HTTPMethod: String, _ URL: NSURL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil) -> NSMutableURLRequest {
         let request = NSMutableURLRequest(URL: URL)
         request.HTTPMethod = HTTPMethod
@@ -51,8 +67,8 @@ public struct Net {
     }
 
     // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
-    // NOTE: Like curl, let front-end developers URL encode names & values.
-    private static func formHTTPBodyFromFields(fields: Dictionary<String, String>) -> NSData? {
+    // NOTE: Like curl: Let front-end developers URL encode names & values.
+    public static func formHTTPBodyFromFields(fields: Dictionary<String, String>) -> NSData? {
         var bodyArray = [String]()
         for (name, value) in fields {
             bodyArray.append("\(name)=\(value)")
@@ -112,3 +128,5 @@ extension String {
         return stringByAddingPercentEncodingWithAllowedCharacters(characterSet)!.stringByReplacingOccurrencesOfString(" ", withString: "+")
     }
 }
+
+public var NSHTTPURLResponseError = "NSHTTPURLResponseError"

@@ -12,6 +12,13 @@ Globally, e.g., at the top of `AppDelegate.swift`, do:
 let api = API(baseURL: NSURL(string: "https://api.example.com"))
 ```
 
+Let's define some local variables:
+
+```swift
+let email = "john.appleseed@example.com"
+let fields = ["name": "John Appleseed", "email": email]
+```
+
 To make a GET request:
 
 ```swift
@@ -21,7 +28,6 @@ let request = api.request("GET", "/users")
 To make a form POST request:
 
 ```swift
-let fields = ["name": "Matt", "email": "matt@example.com"]
 let request = api.request("POST", "/users", fields)
 ```
 
@@ -31,24 +37,24 @@ If certain API paths require an access token, set it:
 api.accessToken = "fb2e77d.47a0479900504cb3ab4a1f626d174d2d"
 ```
 
-Then, to make an authorized request, which includes your access token:
+To make an authorized request, which includes your access token in the `Authorization` request header field:
 
 ```swift
 let request = api.request("GET", "/me", auth: true)
 ```
 
-Then, to send any of the requests above, use `NSURLSession`:
+To send any of the requests above, use `NSURLSession`:
 
 ```swift
-let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
+let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) in
     // Handle response
 }
 ```
 
-Or, for help parsing a JSON response, use `API`:
+For help parsing a JSON response and converting an unsuccessful status code into an `error`, use `API`:
 
 ```swift
-let dataTask = API.dataTaskWithRequest(request) { JSONObject, statusCode, error in
+let dataTask = API.dataTaskWithRequest(request) { (JSONObject, response, error) in
     // Handle response
 }
 ```
@@ -56,15 +62,14 @@ let dataTask = API.dataTaskWithRequest(request) { JSONObject, statusCode, error 
 To make and send a multipart (file-upload) request:
 
 ```swift
-let fields = ["name": "Matt", "email": "matt@example.com"]
-let JPEGData = UIImageJPEGRepresentation(UIImage(named: "Matt"), 0.9)
+let JPEGData = UIImageJPEGRepresentation(UIImage(named: "JohnAppleseed"), 0.9)
 let request = api.request("POST", "/users", fields, JPEGData)
-let dataTask = NSURLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { data, response, error in
+let dataTask = NSURLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { (data, response, error) in
     // Handle response
 }
 ```
 
-Use `Net` instead of `api` for making one-off requests to resources with different base URLs.
+Use `HTTP` instead of `api` for making one-off requests to resources with different base URLs.
 
 See the [Acani Chats iPhone Client][2] for example usage.
 
