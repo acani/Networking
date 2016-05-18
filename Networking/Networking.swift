@@ -29,16 +29,29 @@ public struct API {
             if let data = data {
                 JSONObject = try? NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions(rawValue: 0))
                 let statusCode = response!.statusCode
-                if !(200 <= statusCode && statusCode <= 299) { // unsuccessful
-                    var userInfo: [NSObject : AnyObject]? = [:]
+                if !(200 <= statusCode && statusCode <= 299) { // not successful
+                    let genericPhrase = NSHTTPURLResponse.anb_localizedGenericStringForStatusCode(statusCode).localizedCapitalizedString
+                    let reasonPhrase  = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
+
+                    var serverTitle: String?
+                    var serverMessage: String?
                     if let dictionary = JSONObject as! Dictionary<String, String>? {
-                        userInfo![NSLocalizedDescriptionKey]             = dictionary["title"] ?? "Error"
-                        userInfo![NSLocalizedRecoverySuggestionErrorKey] = dictionary["message"]
-                    } else {
-                        userInfo![NSLocalizedDescriptionKey]             = "Status Code: \(statusCode)"
-                        userInfo![NSLocalizedRecoverySuggestionErrorKey] = NSHTTPURLResponse.localizedStringForStatusCode(statusCode)
+                        serverTitle   = dictionary["title"]
+                        serverMessage = dictionary["message"]
                     }
-                    if userInfo!.isEmpty { userInfo = nil }
+
+                    let title = serverTitle ?? genericPhrase
+                    var message: String?
+                    if serverMessage == "" {
+                        message = nil
+                    } else {
+                        message = reasonPhrase != title ? "\(statusCode) \(reasonPhrase)" : "\(statusCode) Status Code"
+                        if let serverMessage = serverMessage { message! += ": \(serverMessage)" }
+                    }
+
+                    var userInfo: [NSObject : AnyObject] = [:]
+                    userInfo["UIAlertControllerTitle"] = title
+                    userInfo["UIAlertControllerMessage"] = message
                     error = NSError(domain: NSHTTPURLResponseError, code: statusCode, userInfo: userInfo)
                 }
             }
@@ -109,6 +122,13 @@ public struct HTTP {
         bodyData.appendData(bodyString.dataUsingEncoding(NSUTF8StringEncoding)!)
 
         return bodyData
+    }
+}
+
+extension NSHTTPURLResponse {
+    public class func anb_localizedGenericStringForStatusCode(statusCode: Int) -> String {
+        let genericStatusCode = statusCode - (statusCode % 100) + 99 // e.g.: 404 becomes 499
+        return localizedStringForStatusCode(genericStatusCode)
     }
 }
 
