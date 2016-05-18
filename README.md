@@ -46,7 +46,7 @@ let request = api.request("GET", "/me", auth: true)
 To send any of the requests above, use `NSURLSession`:
 
 ```swift
-let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) in
+let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
     // Handle response
 }
 ```
@@ -54,7 +54,7 @@ let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data
 For help parsing a JSON response and converting an unsuccessful status code into an `error`, use `API`:
 
 ```swift
-let dataTask = API.dataTaskWithRequest(request) { (JSONObject, response, error) in
+let dataTask = API.dataTaskWithRequest(request) { JSONObject, response, error in
     // Handle response
 }
 ```
@@ -64,7 +64,7 @@ To make and send a multipart (file-upload) request:
 ```swift
 let JPEGData = UIImageJPEGRepresentation(UIImage(named: "JohnAppleseed"), 0.9)
 let request = api.request("POST", "/users", fields, JPEGData)
-let dataTask = NSURLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { (data, response, error) in
+let dataTask = NSURLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { data, response, error in
     // Handle response
 }
 ```
