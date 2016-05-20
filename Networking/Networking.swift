@@ -23,40 +23,33 @@ public struct API {
     }
 
     public static func dataTaskWithRequest(request: NSURLRequest, completionHandler: (AnyObject?, NSHTTPURLResponse?, NSError?) -> Void) -> NSURLSessionDataTask {
-        return NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, var error) in
-            var JSONObject: AnyObject?
+        return NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
+            let JSONObject: AnyObject?
             let response = response as! NSHTTPURLResponse?
-            if let data = data {
-                JSONObject = try? NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions(rawValue: 0))
-                let statusCode = response!.statusCode
-                if !(200 <= statusCode && statusCode <= 299) { // not successful
-                    let genericPhrase = NSHTTPURLResponse.anb_localizedGenericStringForStatusCode(statusCode).localizedCapitalizedString
-                    let reasonPhrase  = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
+            let newError: NSError?
 
-                    var serverTitle: String?
-                    var serverMessage: String?
-                    if let dictionary = JSONObject as! Dictionary<String, String>? {
-                        serverTitle   = dictionary["title"]
-                        serverMessage = dictionary["message"]
-                    }
-
-                    let title = serverTitle ?? genericPhrase
-                    var message: String?
-                    if serverMessage == "" {
-                        message = nil
-                    } else {
-                        message = reasonPhrase != title ? "\(statusCode) \(reasonPhrase)" : "\(statusCode) Status Code"
-                        if let serverMessage = serverMessage { message! += ": \(serverMessage)" }
-                    }
-
-                    var userInfo: [NSObject : AnyObject] = [:]
-                    userInfo["UIAlertControllerTitle"] = title
-                    userInfo["UIAlertControllerMessage"] = message
-                    error = NSError(domain: NSHTTPURLResponseError, code: statusCode, userInfo: userInfo)
-                }
+            if let error = error {
+                JSONObject = nil
+                newError = NSError(domain: AACNetworkingErrorDomain, code: 1, userInfo: [NSUnderlyingErrorKey: error])
+            } else {
+                JSONObject = try? NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions(rawValue: 0))
+                newError = errorWithDictionary(JSONObject as? Dictionary<String, String>, statusCode: response!.statusCode)
             }
-            completionHandler(JSONObject, response, error)
+
+            completionHandler(JSONObject, response, newError)
         }
+    }
+
+    public static func errorWithDictionary(dictionary: Dictionary<String, String>?, statusCode: Int) -> NSError? {
+        if (200 <= statusCode && statusCode <= 299) { return nil } // successful
+
+        let title = dictionary?["title"] ?? NSHTTPURLResponse.anb_localizedClassForStatusCode(statusCode).localizedCapitalizedString
+        let reasonPhrase = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
+        var message = reasonPhrase != title ? "\(statusCode) \(reasonPhrase)" : "\(statusCode) Status Code"
+        if let serverMessage = dictionary?["message"] { message += ": \(serverMessage)" }
+
+        var userInfo = [AACNetworkingErrorTitleKey: title, AACNetworkingErrorMessageKey: message]
+        return NSError(domain: AACNetworkingErrorDomain, code: statusCode, userInfo: userInfo)
     }
 }
 
@@ -126,9 +119,9 @@ public struct HTTP {
 }
 
 extension NSHTTPURLResponse {
-    public class func anb_localizedGenericStringForStatusCode(statusCode: Int) -> String {
-        let genericStatusCode = statusCode - (statusCode % 100) + 99 // e.g.: 404 becomes 499
-        return localizedStringForStatusCode(genericStatusCode)
+    public class func anb_localizedClassForStatusCode(statusCode: Int) -> String {
+        let statusCodeClass = statusCode - (statusCode % 100) + 99 // e.g.: 404 becomes 499
+        return localizedStringForStatusCode(statusCodeClass)
     }
 }
 
@@ -149,4 +142,34 @@ extension String {
     }
 }
 
-public var NSHTTPURLResponseError = "NSHTTPURLResponseError"
+import Alerts
+
+public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Void)? = nil) {
+    func messageWithError(error: NSError) -> String {
+        var message: String?
+        if let errorDescription = error.userInfo[NSLocalizedDescriptionKey] as! String? {
+            message = errorDescription
+        }
+        if let recoverySuggestion = error.userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
+            message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
+        }
+        if message == nil { message = error.localizedDescription }
+        return message!
+    }
+
+    var title: String?
+    var message: String?
+    if error.userInfo.indexForKey(NSUnderlyingErrorKey) != nil {
+        title = "Networking Error"
+        message = messageWithError(error)
+    } else {
+        title = error.userInfo[AACNetworkingErrorTitleKey] as! String? ?? ""
+        message = error.userInfo[AACNetworkingErrorMessageKey] as! String?
+    }
+    alert(title: title, message: message, handler: handler)
+}
+
+public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
+
+public var AACNetworkingErrorTitleKey   = "AACNetworkingErrorTitleKey"
+public var AACNetworkingErrorMessageKey = "AACNetworkingErrorMessageKey"
