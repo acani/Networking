@@ -32,22 +32,21 @@ public struct API {
                 JSONObject = nil
                 newError = NSError(domain: AACNetworkingErrorDomain, code: 1, userInfo: [NSUnderlyingErrorKey: error])
             } else {
+                // Create newError from JSONObject if statusCode isn't successful
                 JSONObject = try? NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions(rawValue: 0))
-                newError = errorWithDictionary(JSONObject as? Dictionary<String, String>, statusCode: response!.statusCode)
+                let statusCode = response!.statusCode; let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
+                newError = !isResponseSuccessful ? errorWithDictionary(JSONObject as! Dictionary<String, String>?, statusCode: statusCode) : nil
             }
 
             completionHandler(JSONObject, response, newError)
         }
     }
 
-    public static func errorWithDictionary(dictionary: Dictionary<String, String>?, statusCode: Int) -> NSError? {
-        if (200 <= statusCode && statusCode <= 299) { return nil } // successful
-
+    public static func errorWithDictionary(dictionary: Dictionary<String, String>?, statusCode: Int) -> NSError {
         let title = dictionary?["title"] ?? NSHTTPURLResponse.anb_localizedClassForStatusCode(statusCode).localizedCapitalizedString
         let reasonPhrase = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
-        var message = reasonPhrase != title ? "\(statusCode) \(reasonPhrase)" : "\(statusCode) Status Code"
+        var message = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
         if let serverMessage = dictionary?["message"] { message += ": \(serverMessage)" }
-
         var userInfo = [AACNetworkingErrorTitleKey: title, AACNetworkingErrorMessageKey: message]
         return NSError(domain: AACNetworkingErrorDomain, code: statusCode, userInfo: userInfo)
     }
