@@ -170,5 +170,5 @@ public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Vo
 
 public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
 
-public var AACNetworkingErrorTitleKey   = "AACNetworkingErrorTitleKey"
-public var AACNetworkingErrorMessageKey = "AACNetworkingErrorMessageKey"
+public let AACNetworkingErrorTitleKey   = "AACNetworkingErrorTitleKey"
+public let AACNetworkingErrorMessageKey = "AACNetworkingErrorMessageKey"
