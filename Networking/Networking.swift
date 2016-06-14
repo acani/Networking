@@ -1,6 +1,6 @@
 import UIKit
 
-public struct API {
+public class API {
     public let baseURL: NSURL
     public var accessToken: String?
 
@@ -52,7 +52,7 @@ public struct API {
     }
 }
 
-public struct HTTP {
+public class HTTP {
     public static func request(HTTPMethod: String, _ URL: NSURL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil) -> NSMutableURLRequest {
         let request = NSMutableURLRequest(URL: URL)
         request.HTTPMethod = HTTPMethod
