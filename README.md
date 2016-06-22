@@ -37,10 +37,10 @@ If certain API paths require an access token, set it:
 api.accessToken = "fb2e77d.47a0479900504cb3ab4a1f626d174d2d"
 ```
 
-To make an authorized request, which includes your access token in the `Authorization` request header field:
+To make an authenticated request, which includes your access token in the `Authorization` request header field:
 
 ```swift
-let request = api.request("GET", "/me", auth: true)
+let request = api.request("GET", "/me", authenticated: true)
 ```
 
 To send any of the requests above, use `NSURLSession`:

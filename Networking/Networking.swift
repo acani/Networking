@@ -12,13 +12,13 @@ public class API {
         return NSURL(string: path, relativeToURL: baseURL)!
     }
 
-    public func request(HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil, auth: Bool = false) -> NSMutableURLRequest {
+    public func request(HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil, authenticated: Bool = false) -> NSMutableURLRequest {
         let request = HTTP.request(HTTPMethod, URLWithPath(path), fields, JPEGData)
-        if auth { authorizeRequest(request) }
+        if authenticated { authenticateRequest(request) }
         return request
     }
 
-    public func authorizeRequest(request: NSMutableURLRequest) {
+    public func authenticateRequest(request: NSMutableURLRequest) {
         request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization")
     }
 
