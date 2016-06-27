@@ -23,6 +23,7 @@ public class API {
     }
 
     public static func dataTaskWithRequest(request: NSURLRequest, completionHandler: (AnyObject?, NSHTTPURLResponse?, NSError?) -> Void) -> NSURLSessionDataTask {
+        HTTP.networkActivityIndicatorVisible = true
         return NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
             let JSONObject: AnyObject?
             let response = response as! NSHTTPURLResponse?
@@ -39,6 +40,7 @@ public class API {
             }
 
             completionHandler(JSONObject, response, newError)
+            HTTP.networkActivityIndicatorVisible = false
         }
     }
 
@@ -47,12 +49,25 @@ public class API {
         let reasonPhrase = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
         var message = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
         if let serverMessage = dictionary?["message"] { message += ": \(serverMessage)" }
-        var userInfo = [AACNetworkingErrorTitleKey: title, AACNetworkingErrorMessageKey: message]
+        let userInfo = [AACNetworkingErrorTitleKey: title, AACNetworkingErrorMessageKey: message]
         return NSError(domain: AACNetworkingErrorDomain, code: statusCode, userInfo: userInfo)
     }
 }
 
 public class HTTP {
+    private static var networkActivityCount: Int = 0
+
+    public static var networkActivityIndicatorVisible: Bool {
+        get { return networkActivityCount > 0 }
+        set(visible) {
+            networkActivityCount += visible ? 1 : -1
+            assert(networkActivityCount >= 0)
+            dispatch_async(dispatch_get_main_queue()) {
+                UIApplication.sharedApplication().networkActivityIndicatorVisible = (networkActivityCount > 0)
+            }
+        }
+    }
+
     public static func request(HTTPMethod: String, _ URL: NSURL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil) -> NSMutableURLRequest {
         let request = NSMutableURLRequest(URL: URL)
         request.HTTPMethod = HTTPMethod
