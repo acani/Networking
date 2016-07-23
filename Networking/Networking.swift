@@ -180,7 +180,7 @@ public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Vo
         title = error.userInfo[AACNetworkingErrorTitleKey] as! String? ?? ""
         message = error.userInfo[AACNetworkingErrorMessageKey] as! String?
     }
-    alert(title: title, message: message, handler: handler)
+    alertTitle(title, message: message, handler: handler)
 }
 
 public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
