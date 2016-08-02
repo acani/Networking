@@ -31,7 +31,7 @@ public class API {
 
             if let error = error {
                 JSONObject = nil
-                newError = NSError(domain: AACNetworkingErrorDomain, code: 1, userInfo: [NSUnderlyingErrorKey: error])
+                newError = error
             } else {
                 // Create newError from JSONObject if statusCode isn't successful
                 JSONObject = try? NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions(rawValue: 0))
@@ -156,31 +156,38 @@ extension String {
     }
 }
 
+extension NSError {
+    public var acn_title: String? {
+        if domain != AACNetworkingErrorDomain {
+            return "Networking Error"
+        } else {
+            return userInfo[AACNetworkingErrorTitleKey] as! String?
+        }
+    }
+
+    public var acn_message: String? {
+        if domain != AACNetworkingErrorDomain {
+            var message: String?
+            if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
+                message = errorDescription
+            }
+            if let recoverySuggestion = userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
+                message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
+            }
+            if message == nil {
+                message = localizedDescription
+            }
+            return message!
+        } else {
+            return userInfo[AACNetworkingErrorMessageKey] as! String?
+        }
+    }
+}
+
 import Alerts
 
 public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Void)? = nil) {
-    func messageWithError(error: NSError) -> String {
-        var message: String?
-        if let errorDescription = error.userInfo[NSLocalizedDescriptionKey] as! String? {
-            message = errorDescription
-        }
-        if let recoverySuggestion = error.userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
-            message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
-        }
-        if message == nil { message = error.localizedDescription }
-        return message!
-    }
-
-    var title: String?
-    var message: String?
-    if error.userInfo.indexForKey(NSUnderlyingErrorKey) != nil {
-        title = "Networking Error"
-        message = messageWithError(error)
-    } else {
-        title = error.userInfo[AACNetworkingErrorTitleKey] as! String? ?? ""
-        message = error.userInfo[AACNetworkingErrorMessageKey] as! String?
-    }
-    alertTitle(title, message: message, handler: handler)
+    alertTitle(error.acn_title ?? "", message: error.acn_message, handler: handler)
 }
 
 public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
