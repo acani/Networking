@@ -157,17 +157,17 @@ extension String {
 }
 
 extension NSError {
-    public var acn_title: String? {
+    public var acn_title: String {
         if domain != AACNetworkingErrorDomain {
             return "Networking Error"
         } else {
-            return userInfo[AACNetworkingErrorTitleKey] as! String?
+            return userInfo[AACNetworkingErrorTitleKey]! as! String
         }
     }
 
-    public var acn_message: String? {
+    public var acn_message: String {
         if domain != AACNetworkingErrorDomain {
-            var message: String?
+            var message: String!
             if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
                 message = errorDescription
             }
@@ -177,17 +177,21 @@ extension NSError {
             if message == nil {
                 message = localizedDescription
             }
-            return message!
+            return message
         } else {
-            return userInfo[AACNetworkingErrorMessageKey] as! String?
+            return userInfo[AACNetworkingErrorMessageKey]! as! String
         }
+    }
+
+    public var acn_isUnauthorized: Bool {
+        return domain == AACNetworkingErrorDomain && code == 401
     }
 }
 
 import Alerts
 
 public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Void)? = nil) {
-    alertTitle(error.acn_title ?? "", message: error.acn_message, handler: handler)
+    alertTitle(error.acn_title, message: error.acn_message, handler: handler)
 }
 
 public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
