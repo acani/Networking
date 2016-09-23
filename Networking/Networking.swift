@@ -1,110 +1,93 @@
 import UIKit
 
-public class API {
-    public let baseURL: NSURL
-    public var accessToken: String?
+open class API {
+    open let baseURL: URL
+    open var accessToken: String?
 
-    public init(baseURL: NSURL) {
+    public init(baseURL: URL) {
         self.baseURL = baseURL
     }
 
-    public func URLWithPath(path: String) -> NSURL {
-        return NSURL(string: path, relativeToURL: baseURL)!
-    }
-
-    public func request(HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil, authenticated: Bool = false) -> NSMutableURLRequest {
-        let request = HTTP.request(HTTPMethod, URLWithPath(path), fields, JPEGData)
-        if authenticated { authenticateRequest(request) }
+    open func request(_ HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil, authenticated: Bool = false) -> URLRequest {
+        var request = HTTP.request(HTTPMethod, URL(string: path, relativeTo: baseURL)!, fields, JPEGData)
+        if authenticated { request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization") }
         return request
     }
 
-    public func authenticateRequest(request: NSMutableURLRequest) {
-        request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization")
-    }
-
-    public static func dataTaskWithRequest(request: NSURLRequest, completionHandler: (AnyObject?, NSHTTPURLResponse?, NSError?) -> Void) -> NSURLSessionDataTask {
+    open static func dataTask(with request: URLRequest, completionHandler: @escaping (AnyObject?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
         HTTP.networkActivityIndicatorVisible = true
-        return NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
-            let JSONObject: AnyObject?
-            let response = response as! NSHTTPURLResponse?
-            let newError: NSError?
+        return URLSession.shared.dataTask(with: request, completionHandler: { data, response, error in
+            let object: AnyObject?
+            let response = response as! HTTPURLResponse?
+            let newError: NetworkingError?
 
             if let error = error {
-                JSONObject = nil
-                newError = error
+                object = nil
+                newError = NetworkingError(error: error as NSError)
             } else {
-                // Create newError from JSONObject if statusCode isn't successful
-                JSONObject = try? NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions(rawValue: 0))
+                // Create newError from object if statusCode isn't successful
+                object = data!.isEmpty ? nil : try! JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) as AnyObject?
                 let statusCode = response!.statusCode; let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
-                newError = !isResponseSuccessful ? errorWithDictionary(JSONObject as! Dictionary<String, String>?, statusCode: statusCode) : nil
+                newError = !isResponseSuccessful ? NetworkingError(dictionary: object! as! Dictionary<String, String>, statusCode: statusCode) : nil
             }
 
-            completionHandler(JSONObject, response, newError)
+            completionHandler(object, response, newError)
             HTTP.networkActivityIndicatorVisible = false
-        }
-    }
-
-    public static func errorWithDictionary(dictionary: Dictionary<String, String>?, statusCode: Int) -> NSError {
-        let title = dictionary?["title"] ?? NSHTTPURLResponse.anb_localizedClassForStatusCode(statusCode).localizedCapitalizedString
-        let reasonPhrase = NSHTTPURLResponse.localizedStringForStatusCode(statusCode).localizedCapitalizedString
-        var message = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
-        if let serverMessage = dictionary?["message"] { message += ": \(serverMessage)" }
-        let userInfo = [AACNetworkingErrorTitleKey: title, AACNetworkingErrorMessageKey: message]
-        return NSError(domain: AACNetworkingErrorDomain, code: statusCode, userInfo: userInfo)
+        }) 
     }
 }
 
-public class HTTP {
+open class HTTP {
     private static var networkActivityCount: Int = 0
 
-    public static var networkActivityIndicatorVisible: Bool {
+    open static var networkActivityIndicatorVisible: Bool {
         get { return networkActivityCount > 0 }
         set(visible) {
             networkActivityCount += visible ? 1 : -1
             assert(networkActivityCount >= 0)
-            dispatch_async(dispatch_get_main_queue()) {
-                UIApplication.sharedApplication().networkActivityIndicatorVisible = (networkActivityCount > 0)
+            DispatchQueue.main.async {
+                UIApplication.shared.isNetworkActivityIndicatorVisible = (networkActivityCount > 0)
             }
         }
     }
 
-    public static func request(HTTPMethod: String, _ URL: NSURL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData? = nil) -> NSMutableURLRequest {
-        let request = NSMutableURLRequest(URL: URL)
-        request.HTTPMethod = HTTPMethod
+    open static func request(_ HTTPMethod: String, _ URL: Foundation.URL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil) -> URLRequest {
+        var request = URLRequest(url: URL)
+        request.httpMethod = HTTPMethod
 
         guard let JPEGData = JPEGData else {
             if let fields = fields {
                 request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-                request.HTTPBody = formHTTPBodyFromFields(fields)
+                request.httpBody = formHTTPBody(fromFields: fields)
             }
             return request
         }
 
         let boundary = multipartBoundary()
         request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.HTTPBody = multipartBodyData(boundary, fields, JPEGData)
+        request.httpBody = multipartBodyData(boundary, fields, JPEGData)
         return request
     }
 
     // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
     // NOTE: Like curl: Let front-end developers URL encode names & values.
-    public static func formHTTPBodyFromFields(fields: Dictionary<String, String>) -> NSData? {
+    open static func formHTTPBody(fromFields fields: Dictionary<String, String>) -> Data? {
         var bodyArray = [String]()
         for (name, value) in fields {
             bodyArray.append("\(name)=\(value)")
         }
-        return bodyArray.joinWithSeparator("&").dataUsingEncoding(NSUTF8StringEncoding)
+        return bodyArray.joined(separator: "&").data(using: .utf8)
     }
 
     private static func multipartBoundary() -> String {
-        return "-----AcaniFormBoundary" + String.randomStringWithLength(16)
+        return "-----AcaniFormBoundary" + String.acn_random(withLength: 16)
     }
 
-    private static func multipartBodyData(boundary: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: NSData) -> NSData {
+    private static func multipartBodyData(_ boundary: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data) -> Data {
         var bodyString = ""
         let hh = "--", rn = "\r\n"
 
-        func contentDisposition(name: String) -> String {
+        func contentDisposition(_ name: String) -> String {
             return "Content-Disposition: form-data; name=\"\(name)\""
         }
 
@@ -121,80 +104,88 @@ public class HTTP {
         bodyString += hh + boundary + rn
         bodyString += contentDisposition("jpeg") + rn
         bodyString += "Content-Type: image/jpeg" + rn + rn
-        let bodyData = NSMutableData(data: bodyString.dataUsingEncoding(NSUTF8StringEncoding)!)
-        bodyData.appendData(JPEGData)
+        var bodyData = bodyString.data(using: .utf8)!
+        bodyData.append(JPEGData)
 
         // Complete
         bodyString = rn + hh + boundary + hh + rn
-        bodyData.appendData(bodyString.dataUsingEncoding(NSUTF8StringEncoding)!)
+        bodyData.append(bodyString.data(using: .utf8)!)
 
         return bodyData
     }
 }
 
-extension NSHTTPURLResponse {
-    public class func anb_localizedClassForStatusCode(statusCode: Int) -> String {
+extension HTTPURLResponse {
+    public class func anb_localizedClass(forStatusCode statusCode: Int) -> String {
         let statusCodeClass = statusCode - (statusCode % 100) + 99 // e.g.: 404 becomes 499
-        return localizedStringForStatusCode(statusCodeClass)
+        return localizedString(forStatusCode: statusCodeClass)
     }
 }
 
 extension String {
-    public static func randomStringWithLength(length: Int) -> String {
+    public static func acn_random(withLength length: Int) -> String {
         let alphabet = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" // 64 characters
         return String((0..<length).map { _ -> Character in
-            return alphabet[alphabet.startIndex.advancedBy(Int(arc4random_uniform(64)))]  // <^ connected
+            return alphabet[alphabet.characters.index(alphabet.startIndex, offsetBy: Int(arc4random_uniform(64)))]  // <^ connected
         })
     }
 
     // Percent encode all characters except alphanumerics, "*", "-", ".", and "_". Replace " " with "+".
     // http://www.w3.org/TR/html5/forms.html#application/x-www-form-urlencoded-encoding-algorithm
-    public func stringByAddingFormURLEncoding() -> String {
-        let characterSet = NSMutableCharacterSet.alphanumericCharacterSet()
-        characterSet.addCharactersInString("*-._ ")
-        return stringByAddingPercentEncodingWithAllowedCharacters(characterSet)!.stringByReplacingOccurrencesOfString(" ", withString: "+")
+    public func acn_addingFormURLEncoding() -> String {
+        let characterSet = NSMutableCharacterSet.alphanumeric()
+        characterSet.addCharacters(in: "*-._ ")
+        return addingPercentEncoding(withAllowedCharacters: characterSet as CharacterSet)!.replacingOccurrences(of: " ", with: "+")
     }
 }
 
 extension NSError {
-    public var acn_title: String {
-        if domain != AACNetworkingErrorDomain {
-            return "Networking Error"
-        } else {
-            return userInfo[AACNetworkingErrorTitleKey]! as! String
-        }
-    }
-
     public var acn_message: String {
-        if domain != AACNetworkingErrorDomain {
-            var message: String!
-            if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
-                message = errorDescription
-            }
-            if let recoverySuggestion = userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
-                message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
-            }
-            if message == nil {
-                message = localizedDescription
-            }
-            return message
-        } else {
-            return userInfo[AACNetworkingErrorMessageKey]! as! String
+        var message: String!
+        if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
+            message = errorDescription
         }
+        if let recoverySuggestion = userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
+            message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
+        }
+        if message == nil {
+            message = localizedDescription
+        }
+        return message
+    }
+}
+
+public struct NetworkingError: Error {
+    public enum ErrorType {
+        case taskError
+        case badStatus
+    }
+    public let title: String
+    public let message: String
+    public let type: ErrorType
+    public let code: Int
+    public var isUnauthorized: Bool { return type == .badStatus && code == 401 }
+
+    public init(error: NSError) {
+        title = "Networking Error"
+        message = error.acn_message
+        type = .taskError
+        code = error.code
     }
 
-    public var acn_isUnauthorized: Bool {
-        return domain == AACNetworkingErrorDomain && code == 401
+    public init(dictionary: Dictionary<String, String>, statusCode: Int) {
+        title = dictionary["title"] ?? HTTPURLResponse.anb_localizedClass(forStatusCode: statusCode).localizedCapitalized
+        let reasonPhrase = HTTPURLResponse.localizedString(forStatusCode: statusCode).localizedCapitalized
+        var mutableMessage = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
+        if let serverMessage = dictionary["message"] { mutableMessage += ": \(serverMessage)" }
+        message = mutableMessage
+        type = .badStatus
+        code = statusCode
     }
 }
 
 import Alerts
 
-public func alertNetworkingError(error: NSError, handler: ((UIAlertAction) -> Void)? = nil) {
-    alertTitle(error.acn_title, message: error.acn_message, handler: handler)
+public func alertNetworkingError(_ error: NetworkingError, handler: ((UIAlertAction) -> Swift.Void)? = nil) {
+    alertTitle(error.title, message: error.message, handler: handler)
 }
-
-public let AACNetworkingErrorDomain = "AACNetworkingErrorDomain"
-
-public let AACNetworkingErrorTitleKey   = "AACNetworkingErrorTitleKey"
-public let AACNetworkingErrorMessageKey = "AACNetworkingErrorMessageKey"

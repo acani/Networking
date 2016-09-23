@@ -9,7 +9,7 @@ Usage:
 Globally, e.g., at the top of `AppDelegate.swift`, do:
 
 ```swift
-let api = API(baseURL: NSURL(string: "https://api.example.com"))
+let api = API(baseURL: URL(string: "https://api.example.com"))
 ```
 
 Let's define some local variables:
@@ -43,10 +43,10 @@ To make an authenticated request, which includes your access token in the `Autho
 let request = api.request("GET", "/me", authenticated: true)
 ```
 
-To send any of the requests above, use `NSURLSession`:
+To send any of the requests above, use `URLSession`:
 
 ```swift
-let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
+let dataTask = URLSession.sharedSession().dataTask(with: request) { data, response, error in
     // Handle response
 }
 ```
@@ -54,7 +54,7 @@ let dataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { data,
 For help parsing a JSON response and converting an unsuccessful status code into an `error`, use `API`:
 
 ```swift
-let dataTask = API.dataTaskWithRequest(request) { JSONObject, response, error in
+let dataTask = API.dataTask(with: request) { object, response, error in
     // Handle response
 }
 ```
@@ -64,7 +64,7 @@ To make and send a multipart (file-upload) request:
 ```swift
 let JPEGData = UIImageJPEGRepresentation(UIImage(named: "JohnAppleseed"), 0.9)
 let request = api.request("POST", "/users", fields, JPEGData)
-let dataTask = NSURLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { data, response, error in
+let dataTask = URLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { data, response, error in
     // Handle response
 }
 ```
