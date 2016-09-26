@@ -58,7 +58,7 @@ open class HTTP {
         guard let JPEGData = JPEGData else {
             if let fields = fields {
                 request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-                request.httpBody = formHTTPBody(fromFields: fields)
+                request.httpBody = formHTTPBody(withFields: fields)
             }
             return request
         }
@@ -71,10 +71,10 @@ open class HTTP {
 
     // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
     // NOTE: Like curl: Let front-end developers URL encode names & values.
-    open static func formHTTPBody(fromFields fields: Dictionary<String, String>) -> Data? {
+    open static func formHTTPBody(withFields fields: Dictionary<String, String>) -> Data? {
         var bodyArray = [String]()
         for (name, value) in fields {
-            bodyArray.append("\(name)=\(value)")
+            bodyArray.append("\(name)=\(value.acn_addingFormURLEncoding)")
         }
         return bodyArray.joined(separator: "&").data(using: .utf8)
     }
@@ -132,7 +132,7 @@ extension String {
 
     // Percent encode all characters except alphanumerics, "*", "-", ".", and "_". Replace " " with "+".
     // http://www.w3.org/TR/html5/forms.html#application/x-www-form-urlencoded-encoding-algorithm
-    public func acn_addingFormURLEncoding() -> String {
+    public var acn_addingFormURLEncoding: String {
         let characterSet = NSMutableCharacterSet.alphanumeric()
         characterSet.addCharacters(in: "*-._ ")
         return addingPercentEncoding(withAllowedCharacters: characterSet as CharacterSet)!.replacingOccurrences(of: " ", with: "+")
