@@ -28,7 +28,7 @@ open class API {
                 // Create newError from object if statusCode isn't successful
                 object = data!.isEmpty ? nil : try! JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) as AnyObject?
                 let statusCode = response!.statusCode; let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
-                newError = !isResponseSuccessful ? NetworkingError(dictionary: object! as! Dictionary<String, String>, statusCode: statusCode) : nil
+                newError = !isResponseSuccessful ? NetworkingError(dictionary: object as! Dictionary<String, String>?, statusCode: statusCode) : nil
             }
 
             completionHandler(object, response, newError)
@@ -173,11 +173,11 @@ public struct NetworkingError: Error {
         code = error.code
     }
 
-    public init(dictionary: Dictionary<String, String>, statusCode: Int) {
-        title = dictionary["title"] ?? HTTPURLResponse.anb_localizedClass(forStatusCode: statusCode).localizedCapitalized
+    public init(dictionary: Dictionary<String, String>?, statusCode: Int) {
+        title = dictionary?["title"] ?? HTTPURLResponse.anb_localizedClass(forStatusCode: statusCode).localizedCapitalized
         let reasonPhrase = HTTPURLResponse.localizedString(forStatusCode: statusCode).localizedCapitalized
         var mutableMessage = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
-        if let serverMessage = dictionary["message"] { mutableMessage += ": \(serverMessage)" }
+        if let serverMessage = dictionary?["message"] { mutableMessage += ": \(serverMessage)" }
         message = mutableMessage
         type = .badStatus
         code = statusCode
