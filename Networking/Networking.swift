@@ -165,6 +165,7 @@ public struct NetworkingError: Error {
     public let type: ErrorType
     public let code: Int
     public var isUnauthorized: Bool { return type == .badStatus && code == 401 }
+    public var isForbidden: Bool { return type == .badStatus && code == 403 }
 
     public init(error: NSError) {
         title = "Networking Error"
