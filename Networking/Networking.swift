@@ -74,13 +74,13 @@ open class HTTP {
     open static func formHTTPBody(withFields fields: Dictionary<String, String>) -> Data? {
         var bodyArray = [String]()
         for (name, value) in fields {
-            bodyArray.append("\(name)=\(value.acn_addingFormURLEncoding)")
+            bodyArray.append("\(name)=\(value.anw_addingFormURLEncoding)")
         }
         return bodyArray.joined(separator: "&").data(using: .utf8)
     }
 
     private static func multipartBoundary() -> String {
-        return "-----AcaniFormBoundary" + String.acn_random(withLength: 16)
+        return "-----AcaniFormBoundary" + String.anw_random(withLength: 16)
     }
 
     private static func multipartBodyData(_ boundary: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data) -> Data {
@@ -123,7 +123,7 @@ extension HTTPURLResponse {
 }
 
 extension String {
-    public static func acn_random(withLength length: Int) -> String {
+    public static func anw_random(withLength length: Int) -> String {
         let alphabet = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" // 64 characters
         return String((0..<length).map { _ -> Character in
             return alphabet[alphabet.characters.index(alphabet.startIndex, offsetBy: Int(arc4random_uniform(64)))]  // <^ connected
@@ -132,7 +132,7 @@ extension String {
 
     // Percent encode all characters except alphanumerics, "*", "-", ".", and "_". Replace " " with "+".
     // http://www.w3.org/TR/html5/forms.html#application/x-www-form-urlencoded-encoding-algorithm
-    public var acn_addingFormURLEncoding: String {
+    public var anw_addingFormURLEncoding: String {
         let characterSet = NSMutableCharacterSet.alphanumeric()
         characterSet.addCharacters(in: "*-._ ")
         return addingPercentEncoding(withAllowedCharacters: characterSet as CharacterSet)!.replacingOccurrences(of: " ", with: "+")
@@ -140,7 +140,7 @@ extension String {
 }
 
 extension NSError {
-    public var acn_message: String {
+    public var anw_message: String {
         var message: String!
         if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
             message = errorDescription
@@ -169,7 +169,7 @@ public struct NetworkingError: Error {
 
     public init(error: NSError) {
         title = "Networking Error"
-        message = error.acn_message
+        message = error.anw_message
         type = .taskError
         code = error.code
     }
