@@ -139,22 +139,6 @@ extension String {
     }
 }
 
-extension NSError {
-    public var anw_message: String {
-        var message: String!
-        if let errorDescription = userInfo[NSLocalizedDescriptionKey] as! String? {
-            message = errorDescription
-        }
-        if let recoverySuggestion = userInfo[NSLocalizedRecoverySuggestionErrorKey] as! String? {
-            message = message != nil ? "\(message!) \(recoverySuggestion)" : recoverySuggestion
-        }
-        if message == nil {
-            message = localizedDescription
-        }
-        return message
-    }
-}
-
 public struct NetworkingError: Error {
     public enum ErrorType {
         case taskError
@@ -169,7 +153,7 @@ public struct NetworkingError: Error {
 
     public init(error: NSError) {
         title = "Networking Error"
-        message = error.anw_message
+        message = error.localizedDescription
         type = .taskError
         code = error.code
     }
