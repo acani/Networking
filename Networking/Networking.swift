@@ -2,15 +2,21 @@ import UIKit
 
 open class API {
     open let baseURL: URL
+    open let credentials: String
     open var accessToken: String?
 
-    public init(baseURL: URL) {
+    public init(baseURL: URL, credentials: String) {
         self.baseURL = baseURL
+        self.credentials = credentials
     }
 
     open func request(_ HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil, authenticated: Bool = false) -> URLRequest {
         var request = HTTP.request(HTTPMethod, URL(string: path, relativeTo: baseURL)!, fields, JPEGData)
-        if authenticated { request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization") }
+        if !authenticated {
+            request.anw_setBasicAuth(with: credentials)
+        } else {
+            request.setValue("Bearer "+accessToken!, forHTTPHeaderField: "Authorization")
+        }
         return request
     }
 
@@ -115,8 +121,15 @@ open class HTTP {
     }
 }
 
+extension URLRequest {
+    public mutating func anw_setBasicAuth(with credentials: String) {
+        let encodedCredentials = credentials.data(using: .utf8)!.base64EncodedString()
+        setValue("Basic "+encodedCredentials, forHTTPHeaderField: "Authorization")
+    }
+}
+
 extension HTTPURLResponse {
-    public class func anb_localizedClass(forStatusCode statusCode: Int) -> String {
+    class func anw_localizedClass(forStatusCode statusCode: Int) -> String {
         let statusCodeClass = statusCode - (statusCode % 100) + 99 // e.g.: 404 becomes 499
         return localizedString(forStatusCode: statusCodeClass)
     }
@@ -159,7 +172,7 @@ public struct NetworkingError: Error {
     }
 
     public init(dictionary: Dictionary<String, String>?, statusCode: Int) {
-        title = dictionary?["title"] ?? HTTPURLResponse.anb_localizedClass(forStatusCode: statusCode).localizedCapitalized
+        title = dictionary?["title"] ?? HTTPURLResponse.anw_localizedClass(forStatusCode: statusCode).localizedCapitalized
         let reasonPhrase = HTTPURLResponse.localizedString(forStatusCode: statusCode).localizedCapitalized
         var mutableMessage = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
         if let serverMessage = dictionary?["message"] { mutableMessage += ": \(serverMessage)" }
