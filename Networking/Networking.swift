@@ -2,16 +2,20 @@ import UIKit
 
 open class API {
     open let baseURL: URL
+    open let versionPath: String?
     open let credentials: String
     open var accessToken: String?
 
-    public init(baseURL: URL, credentials: String) {
+    public init(baseURL: URL, versionPath: String? = nil, credentials: String) {
         self.baseURL = baseURL
+        self.versionPath = versionPath
         self.credentials = credentials
     }
 
     open func request(_ HTTPMethod: String, _ path: String, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil, authenticated: Bool = false) -> URLRequest {
-        var request = HTTP.request(HTTPMethod, URL(string: path, relativeTo: baseURL)!, fields, JPEGData)
+        let versionedPath = versionPath != nil ? versionPath!+path : path
+        let requestURL = URL(string: versionedPath, relativeTo: baseURL)!
+        var request = HTTP.request(HTTPMethod, requestURL, fields, JPEGData)
         if !authenticated {
             request.anw_setBasicAuth(with: credentials)
         } else {
@@ -57,8 +61,8 @@ open class HTTP {
         }
     }
 
-    open static func request(_ HTTPMethod: String, _ URL: Foundation.URL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil) -> URLRequest {
-        var request = URLRequest(url: URL)
+    open static func request(_ HTTPMethod: String, _ url: Foundation.URL, _ fields: Dictionary<String, String>? = nil, _ JPEGData: Data? = nil) -> URLRequest {
+        var request = URLRequest(url: url)
         request.httpMethod = HTTPMethod
 
         guard let JPEGData = JPEGData else {
