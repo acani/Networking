@@ -35,12 +35,25 @@ open class API {
                 object = nil
                 newError = NetworkingError(error: error as NSError)
             } else {
-                // Create newError from object if statusCode isn't successful
-                object = data!.isEmpty ? nil : try! JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) as AnyObject?
-                let statusCode = response!.statusCode; let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
+                if data!.isEmpty {
+                    object = nil
+                } else {
+                    if let jsonObject = try? JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) {
+                        object = jsonObject as AnyObject
+                    } else { // invalid JSON
+                        let dataString = String(data: data!, encoding: .utf8)!
+                        if dataString.range(of:"maintenance-mode") != nil {
+                            object = ["message": "The server is undergoing maintenance. Please try again later."] as AnyObject
+                        } else {
+                            object = ["message": "The server encountered an unexpected error."] as AnyObject
+                        }
+                    }
+                }
+                let statusCode = response!.statusCode
+                let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
                 newError = !isResponseSuccessful ? NetworkingError(dictionary: object as! Dictionary<String, String>?, statusCode: statusCode) : nil
             }
-
+            
             completionHandler(object, response, newError)
             HTTP.networkActivityIndicatorVisible = false
         }) 
