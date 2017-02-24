@@ -35,8 +35,17 @@ open class API {
                 object = nil
                 newError = NetworkingError(error: error as NSError)
             } else {
+                let statusCode = response!.statusCode
                 if data!.isEmpty {
-                    object = nil
+                    if statusCode == 401 {
+                        if (response!.allHeaderFields["Www-Authenticate"]! as! String).contains("Basic") {
+                            object = ["title": "Unauthorized", "message": "Please update the app."] as AnyObject
+                        } else {
+                            object = ["title": "Session Expired", "message": "Please log in."] as AnyObject
+                        }
+                    } else {
+                        object = nil
+                    }
                 } else {
                     if let jsonObject = try? JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) {
                         object = jsonObject as AnyObject
@@ -49,7 +58,6 @@ open class API {
                         }
                     }
                 }
-                let statusCode = response!.statusCode
                 let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
                 newError = !isResponseSuccessful ? NetworkingError(dictionary: object as! Dictionary<String, String>?, statusCode: statusCode) : nil
             }
@@ -175,25 +183,25 @@ public struct NetworkingError: Error {
         case badStatus
     }
     public let title: String
-    public let message: String
+    public let message: String?
     public let type: ErrorType
     public let code: Int
     public var isUnauthorized: Bool { return type == .badStatus && code == 401 }
     public var isForbidden: Bool { return type == .badStatus && code == 403 }
 
     public init(error: NSError) {
-        title = "Networking Error"
+        title = ""
         message = error.localizedDescription
         type = .taskError
         code = error.code
     }
 
     public init(dictionary: Dictionary<String, String>?, statusCode: Int) {
-        title = dictionary?["title"] ?? HTTPURLResponse.anw_localizedClass(forStatusCode: statusCode).localizedCapitalized
-        let reasonPhrase = HTTPURLResponse.localizedString(forStatusCode: statusCode).localizedCapitalized
-        var mutableMessage = reasonPhrase == title ? "\(statusCode) Status Code" : "\(statusCode) \(reasonPhrase)"
-        if let serverMessage = dictionary?["message"] { mutableMessage += ": \(serverMessage)" }
-        message = mutableMessage
+        title = dictionary?["title"] ?? ""
+        message = dictionary?["message"]
+        let preTitle = title
+        let preMessage = message
+        precondition(!(preTitle.isEmpty && (preMessage == nil || preMessage!.isEmpty)))
         type = .badStatus
         code = statusCode
     }
