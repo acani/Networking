@@ -54,7 +54,7 @@ let dataTask = URLSession.sharedSession().dataTask(with: request) { data, respon
 For help parsing a JSON response and converting an unsuccessful status code into an `error`, use `API`:
 
 ```swift
-let dataTask = API.dataTask(with: request) { object, response, error in
+let dataTask = api.dataTask(with: request) { object, response, error in
     // Handle response
 }
 ```

@@ -1,12 +1,16 @@
 import UIKit
 
 open class API {
+    open let session: URLSession
     open let baseURL: URL
     open let versionPath: String?
     open let credentials: String
     open var accessToken: String?
 
     public init(baseURL: URL, versionPath: String? = nil, credentials: String) {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 31
+        session = URLSession(configuration: configuration)
         self.baseURL = baseURL
         self.versionPath = versionPath
         self.credentials = credentials
@@ -24,9 +28,9 @@ open class API {
         return request
     }
 
-    open static func dataTask(with request: URLRequest, completionHandler: @escaping (AnyObject?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
+    open func dataTask(with request: URLRequest, completionHandler: @escaping (AnyObject?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
         HTTP.networkActivityIndicatorVisible = true
-        return URLSession.shared.dataTask(with: request, completionHandler: { data, response, error in
+        return session.dataTask(with: request, completionHandler: { data, response, error in
             let object: AnyObject?
             let response = response as! HTTPURLResponse?
             let newError: NetworkingError?
@@ -61,7 +65,7 @@ open class API {
                 let isResponseSuccessful = (200 <= statusCode && statusCode <= 299)
                 newError = !isResponseSuccessful ? NetworkingError(dictionary: object as! Dictionary<String, String>?, statusCode: statusCode) : nil
             }
-            
+
             completionHandler(object, response, newError)
             HTTP.networkActivityIndicatorVisible = false
         }) 
