@@ -45,7 +45,7 @@ open class API {
                         if (response!.allHeaderFields["Www-Authenticate"]! as! String).contains("Basic") {
                             object = ["title": "Unauthorized", "message": "Please update the app."] as AnyObject
                         } else {
-                            object = ["title": "Session Expired", "message": "Please log in."] as AnyObject
+                            object = ["title": "Unauthenticated", "message": "Could not authenticate you. Please contact us."] as AnyObject
                         }
                     } else {
                         object = nil
