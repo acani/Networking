@@ -66,7 +66,7 @@ open class API {
     }
 
     private func refreshAccessTokenAndRetryRequest(_ request: URLRequest, completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) {
-        queuedRequests.append(request, completionHandler)
+        queuedRequests.append((request, completionHandler))
         guard refreshAccessTokenDataTask == nil || refreshAccessTokenDataTask!.state == .completed else { return }
         let refreshRequest = self.request("PUT", "/sessions", ["refresh_token": refreshToken!])
         refreshAccessTokenDataTask = baseDataTask(with: refreshRequest) { object, response, error in
@@ -256,7 +256,7 @@ extension String {
     public static func anw_random(withLength length: Int) -> String {
         let alphabet = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" // 64 characters
         return String((0..<length).map { _ -> Character in
-            return alphabet[alphabet.characters.index(alphabet.startIndex, offsetBy: Int(arc4random_uniform(64)))]  // <^ connected
+            return alphabet[alphabet.index(alphabet.startIndex, offsetBy: Int(arc4random_uniform(64)))]  // <^ connected
         })
     }
 
