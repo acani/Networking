@@ -53,8 +53,11 @@ open class API {
                     object = self.errorMessageDictionary(with: data!)
                 }
                 if httpResponse!.anw_hasErrorStatusCode {
-                    let dictionary = object! as! [String: String]
-                    networkingError = NetworkingError(dictionary: dictionary, response: httpResponse!)
+                    if let dictionary = object! as? [String: String] {
+                        networkingError = NetworkingError(dictionary: dictionary, response: httpResponse!)
+                    } else {
+                        networkingError = NetworkingError(statusCode: httpResponse!.statusCode)
+                    }
                 } else {
                     networkingError = nil
                 }
@@ -282,6 +285,13 @@ public struct NetworkingError: Error {
     public var isForbidden: Bool { return type == .badStatus && code == 403 }
     public var isNotFound: Bool { return type == .badStatus && code == 404 }
     public var isConflict: Bool { return type == .badStatus && code == 409 }
+
+    public init(statusCode: Int) {
+        title = ""
+        message = nil
+        type = .badStatus
+        code = statusCode
+    }
 
     public init(error: NSError) {
         title = ""
