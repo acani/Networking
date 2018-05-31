@@ -87,8 +87,7 @@ open class API {
                 self.queuedRequests.removeAll()
             } else {
                 let dictionary = object! as! [String : String]
-                let accessToken = dictionary["access_token"]!
-                self.accessToken = accessToken
+                self.accessToken = dictionary["access_token"]!
                 self.refreshToken = dictionary["refresh_token"]!
                 NotificationCenter.default.post(name: .APIDidUpdateTokens, object: self)
             }
@@ -250,8 +249,9 @@ extension HTTPURLResponse {
     public var anw_hasErrorStatusCode: Bool { return statusCode < 200 || 299 < statusCode }
 
     public var anw_isUserUnauthenticated: Bool {
-        let wwwHeader = allHeaderFields["Www-Authenticate"] as! String?
-        return statusCode == 401 && wwwHeader!.contains("Bearer")
+        if statusCode != 401 { return false }
+        let wwwHeader = allHeaderFields["Www-Authenticate"]! as! String
+        return wwwHeader.starts(with: "Bearer ")
     }
 }
 
