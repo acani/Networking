@@ -273,41 +273,42 @@ extension String {
 }
 
 public struct NetworkingError: Error {
-    public enum ErrorType {
-        case taskError
-        case badStatus
-    }
+    public let isAPIError: Bool
+    public let code: Int
     public let title: String
     public let message: String?
-    public let type: ErrorType
-    public let code: Int
-    public var isUnauthorized: Bool { return type == .badStatus && code == 401 }
-    public var isForbidden: Bool { return type == .badStatus && code == 403 }
-    public var isNotFound: Bool { return type == .badStatus && code == 404 }
-    public var isConflict: Bool { return type == .badStatus && code == 409 }
+    public let type: String?
+    public var isUnauthorized: Bool { return isAPIError && code == 401 }
+    public var isForbidden: Bool { return isAPIError && code == 403 }
+    public var isNotFound: Bool { return isAPIError && code == 404 }
+    public var isConflict: Bool { return isAPIError && code == 409 }
 
     public init(statusCode: Int) {
+        isAPIError = true
+        code = statusCode
         title = ""
         message = nil
-        type = .badStatus
-        code = statusCode
+        type = nil
     }
 
     public init(error: NSError) {
+        isAPIError = false
+        code = error.code
         title = ""
         message = error.localizedDescription
-        type = .taskError
-        code = error.code
+        type = nil
     }
 
     public init(dictionary: [String: String], response: HTTPURLResponse) {
+        isAPIError = true
+        code = response.statusCode
         title = dictionary["title"] ?? ""
         message = dictionary["message"]
-        let preTitle = title
-        let preMessage = message
-        precondition(!(preTitle.isEmpty && (preMessage == nil || preMessage!.isEmpty)))
-        type = .badStatus
-        code = response.statusCode
+        type = dictionary["type"]
+        let messageIsBlank = message == nil || message!.isEmpty
+        let typeIsBlank = type == nil || type!.isEmpty
+        let allAreBlank = title.isEmpty && messageIsBlank && typeIsBlank
+        precondition(!allAreBlank, "Title, message, and type are all blank")
     }
 }
 
