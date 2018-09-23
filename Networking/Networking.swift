@@ -12,7 +12,7 @@ open class API {
 
     public init(baseURL: URL, versionPath: String? = nil, credentials: String) {
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 31
+        configuration.timeoutIntervalForRequest = 33
         session = URLSession(configuration: configuration)
         self.baseURL = baseURL
         self.versionPath = versionPath
