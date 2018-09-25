@@ -283,19 +283,19 @@ public struct NetworkingError: Error {
     public var isNotFound: Bool { return isAPIError && code == 404 }
     public var isConflict: Bool { return isAPIError && code == 409 }
 
-    public init(statusCode: Int) {
-        isAPIError = true
-        code = statusCode
-        title = ""
-        message = nil
-        type = nil
-    }
-
     public init(error: NSError) {
         isAPIError = false
         code = error.code
         title = ""
         message = error.localizedDescription
+        type = nil
+    }
+
+    public init(statusCode: Int) {
+        isAPIError = true
+        code = statusCode
+        title = ""
+        message = nil
         type = nil
     }
 
@@ -305,10 +305,6 @@ public struct NetworkingError: Error {
         title = dictionary["title"] ?? ""
         message = dictionary["message"]
         type = dictionary["type"]
-        let messageIsBlank = message == nil || message!.isEmpty
-        let typeIsBlank = type == nil || type!.isEmpty
-        let allAreBlank = title.isEmpty && messageIsBlank && typeIsBlank
-        precondition(!allAreBlank, "Title, message, and type are all blank")
     }
 }
 
