@@ -1,10 +1,10 @@
 import UIKit
 
 open class API {
-    open let session: URLSession
-    open let baseURL: URL
-    open let versionPath: String?
-    open let credentials: String
+    public let session: URLSession
+    public let baseURL: URL
+    public let versionPath: String?
+    public let credentials: String
     open var accessToken: String?
     open var refreshToken: String?
     weak var refreshAccessTokenDataTask: URLSessionDataTask?
@@ -159,7 +159,7 @@ public let NetworkingErrorKey = "NetworkingErrorKey"
 open class HTTP {
     fileprivate static var networkActivityCount: Int = 0
 
-    open static var networkActivityIndicatorVisible: Bool {
+    public static var networkActivityIndicatorVisible: Bool {
         get { return networkActivityCount > 0 }
         set(visible) {
             networkActivityCount += visible ? 1 : -1
@@ -170,7 +170,7 @@ open class HTTP {
         }
     }
 
-    open static func request(_ HTTPMethod: String, _ url: Foundation.URL, _ fields: [String: String]? = nil, _ JPEGData: Data? = nil) -> URLRequest {
+    public static func request(_ HTTPMethod: String, _ url: Foundation.URL, _ fields: [String: String]? = nil, _ JPEGData: Data? = nil) -> URLRequest {
         var request = URLRequest(url: url)
         request.httpMethod = HTTPMethod
 
@@ -190,7 +190,7 @@ open class HTTP {
 
     // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
     // NOTE: Like curl: Let front-end developers URL encode names & values.
-    open static func formHTTPBody(withFields fields: [String: String]) -> Data? {
+    public static func formHTTPBody(withFields fields: [String: String]) -> Data? {
         var bodyArray = [String]()
         for (name, value) in fields {
             bodyArray.append("\(name)=\(value.anw_addingFormURLEncoding)")
