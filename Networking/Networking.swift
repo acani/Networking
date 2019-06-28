@@ -18,7 +18,6 @@ open class API {
     self.versionPath = versionPath
     self.credentials = credentials
     queuedRequests = []
-    NotificationCenter.default.addObserver(self, selector: #selector(apiDidUpdateTokens), name: .APIDidUpdateTokens, object: self)
   }
 
   open func request(_ HTTPMethod: String, _ path: String, _ fields: [String: String]? = nil, _ JPEGData: Data? = nil, authenticated: Bool = false) -> URLRequest {
@@ -75,8 +74,12 @@ open class API {
     refreshAccessTokenDataTask = baseDataTask(with: refreshRequest) { object, response, error in
       if let error = error {
         if error.isUnauthorized || error.isConflict {
-          let userInfo = [NetworkingErrorKey: error]
-          NotificationCenter.default.post(name: .APIRefreshTokensDidFail, object: self, userInfo: userInfo)
+          self.accessToken = nil
+          self.refreshToken = nil
+          let userInfo = [NetworkingError.userInfoKey: error]
+          DispatchQueue.main.async {
+            NotificationCenter.default.post(name: API.tokensRefreshedNotification, object: self, userInfo: userInfo)
+          }
         } else {
           for queuedRequest in self.queuedRequests {
             queuedRequest.1(object, response, error)
@@ -89,10 +92,24 @@ open class API {
         let dictionary = object! as! [String : String]
         self.accessToken = dictionary["access_token"]!
         self.refreshToken = dictionary["refresh_token"]!
-        NotificationCenter.default.post(name: .APIDidUpdateTokens, object: self)
+        DispatchQueue.main.async {
+          NotificationCenter.default.post(name: API.tokensRefreshedNotification, object: self)
+          self.sendQueuedRequests()
+        }
       }
     }
     refreshAccessTokenDataTask!.resume()
+  }
+
+  private func sendQueuedRequests() {
+    for request in queuedRequests {
+      var (updatedRequest, completionHandler) = request
+      updatedRequest.anw_setAccessToken(accessToken!)
+      self.baseDataTask(with: updatedRequest) { object, response, error in
+        completionHandler(object, response, error)
+        HTTP.networkActivityIndicatorVisible = false
+      }.resume()
+    }
   }
 
   open func baseDataTask(with request: URLRequest, completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
@@ -135,26 +152,8 @@ open class API {
     }
   }
 
-  // MARK: - Notifications
-
-  @objc func apiDidUpdateTokens() {
-    for request in queuedRequests {
-      var (updatedRequest, completionHandler) = request
-      updatedRequest.anw_setAccessToken(accessToken!)
-      self.baseDataTask(with: updatedRequest) { object, response, error in
-        completionHandler(object, response, error)
-        HTTP.networkActivityIndicatorVisible = false
-      }.resume()
-    }
-  }
+  public static let tokensRefreshedNotification = Notification.Name("APITokensRefreshedNotification")
 }
-
-extension Notification.Name {
-  public static let APIRefreshTokensDidFail = Notification.Name("APIRefreshTokensDidFailNotification")
-  public static let APIDidUpdateTokens = Notification.Name("APIDidUpdateTokensNotification")
-}
-
-public let NetworkingErrorKey = "NetworkingErrorKey"
 
 open class HTTP {
   fileprivate static var networkActivityCount: Int = 0
@@ -306,6 +305,8 @@ public struct NetworkingError: Error {
     message = dictionary["message"]
     type = dictionary["type"]
   }
+
+  public static let userInfoKey = "NetworkingErrorUserInfoKey"
 }
 
 import Alerts
