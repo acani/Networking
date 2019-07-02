@@ -184,7 +184,7 @@
 				TargetAttributes = {
 					D25751771CDCCFE00089EA85 = {
 						CreatedOnToolsVersion = 7.3;
-						LastSwiftMigration = 1000;
+						LastSwiftMigration = 1020;
 					};
 					D25751811CDCCFE00089EA85 = {
 						CreatedOnToolsVersion = 7.3;
@@ -407,7 +407,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 4.2;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -426,7 +426,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.acani.Networking;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 4.2;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
