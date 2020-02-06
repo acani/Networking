@@ -188,7 +188,7 @@ open class HTTP {
   }
 
   // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
-  // NOTE: Like curl: Let front-end developers URL encode names & values.
+  // As curl does, let front-end developers URL encode names & values.
   public static func formHTTPBody(withFields fields: [String: String]) -> Data? {
     var bodyArray = [String]()
     for (name, value) in fields {
