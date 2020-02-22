@@ -189,12 +189,12 @@ open class HTTP {
 
   // Convert ["name1": "value1", "name2": "value2"] to "name1=value1&name2=value2".
   // As curl does, let front-end developers URL encode names & values.
-  public static func formHTTPBody(withFields fields: [String: String]) -> Data? {
+  public static func formHTTPBody(withFields fields: [String: String]) -> Data {
     var bodyArray = [String]()
     for (name, value) in fields {
       bodyArray.append("\(name)=\(value.anw_addingFormURLEncoding)")
     }
-    return bodyArray.joined(separator: "&").data(using: .utf8)
+    return bodyArray.joined(separator: "&").data(using: .utf8)!
   }
 
   private static func multipartBoundary() -> String {
