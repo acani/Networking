@@ -78,7 +78,7 @@ open class API {
           self.refreshToken = nil
           let userInfo = [NetworkingError.userInfoKey: error]
           DispatchQueue.main.async {
-            NotificationCenter.default.post(name: API.tokensRefreshedNotification, object: self, userInfo: userInfo)
+            NotificationCenter.default.post(name: API.didRefreshTokensNotification, object: self, userInfo: userInfo)
           }
         } else {
           for queuedRequest in self.queuedRequests {
@@ -89,11 +89,11 @@ open class API {
         HTTP.networkActivityIndicatorVisible = false
         self.queuedRequests.removeAll()
       } else {
-        let dictionary = object! as! [String : String]
+        let dictionary = object! as! [String: String]
         self.accessToken = dictionary["access_token"]!
         self.refreshToken = dictionary["refresh_token"]!
         DispatchQueue.main.async {
-          NotificationCenter.default.post(name: API.tokensRefreshedNotification, object: self)
+          NotificationCenter.default.post(name: API.didRefreshTokensNotification, object: self)
           self.sendQueuedRequests()
         }
       }
@@ -140,8 +140,7 @@ open class API {
   }
 
   private func parseJSON(with data: Data) -> Any? {
-    let options = JSONSerialization.ReadingOptions(rawValue: 0)
-    return try? JSONSerialization.jsonObject(with: data, options: options)
+    try? JSONSerialization.jsonObject(with: data)
   }
 
   private func errorMessageDictionary(with data: Data) -> [String: String] {
@@ -152,7 +151,7 @@ open class API {
     }
   }
 
-  public static let tokensRefreshedNotification = Notification.Name("APITokensRefreshedNotification")
+  public static let didRefreshTokensNotification = Notification.Name("APIDidRefreshTokensNotification")
 }
 
 open class HTTP {
