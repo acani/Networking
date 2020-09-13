@@ -6,10 +6,10 @@ Setup: [How to add a Git repository to your Xcode project][1]
 
 Usage:
 
-Globally, e.g., at the top of `AppDelegate.swift`, do:
+Globally, eg, at the top of `AppDelegate.swift`, do:
 
 ```swift
-let api = API(baseURL: URL(string: "https://api.example.com"))
+let api = API(baseURL: URL(string: "https://api.example.com"), credentials: "MyApp:Secret")
 ```
 
 Let's define some local variables:
@@ -46,7 +46,7 @@ let request = api.request("GET", "/me", authenticated: true)
 To send any of the requests above, use `URLSession`:
 
 ```swift
-let dataTask = URLSession.sharedSession().dataTask(with: request) { data, response, error in
+let dataTask = URLSession.shared.dataTask(with: request) { data, response, error in
   // Handle response
 }
 ```
@@ -62,9 +62,10 @@ let dataTask = api.dataTask(with: request) { object, response, error in
 To make and send a multipart (file-upload) request:
 
 ```swift
-let JPEGData = UIImageJPEGRepresentation(UIImage(named: "JohnAppleseed"), 0.9)
-let request = api.request("POST", "/users", fields, JPEGData)
-let dataTask = URLSession.sharedSession().uploadTaskWithRequest(request, fromData: request.HTTPBody!) { data, response, error in
+let jpegData = UIImage(named: "JohnAppleseed.jpg")!.jpegData(compressionQuality: 0.75)
+let request = api.request("POST", "/users", fields, jpegData)
+let body = request.httpBody!
+let dataTask = URLSession.shared.uploadTask(with: request, from: body) { data, response, error in
   // Handle response
 }
 ```
@@ -80,5 +81,5 @@ Released under the [Unlicense][4].
 
   [1]: https://github.com/acani/Libraries
   [2]: https://github.com/acani/Chats-iPhone-Client
-  [3]: https://github.com/acani/Networking/blob/master/Networking.swift
+  [3]: https://github.com/acani/Networking/blob/master/Networking/Networking.swift
   [4]: http://unlicense.org

@@ -3,10 +3,10 @@ import Networking
 
 class NetworkingTests: XCTestCase {
   func testStrip() {
-    XCTAssertEqual("".anw_addingFormURLEncoding, "")                               // empty
-    XCTAssertEqual("Hello, World!".anw_addingFormURLEncoding, "Hello%2C+World%21") // spaces & punctuation
-    XCTAssertEqual("🤓😎".anw_addingFormURLEncoding, "🤓😎")                      // emojis
-    XCTAssertEqual("123".anw_addingFormURLEncoding, "123")                         // numeric
-    XCTAssertEqual("abc123*-._".anw_addingFormURLEncoding, "abc123*-._")           // mixed
+    XCTAssertEqual("".anw_addingFormURLEncoding, "")
+    XCTAssertEqual("Hello, World!".anw_addingFormURLEncoding, "Hello,+World!")
+    XCTAssertEqual("🤓😎".anw_addingFormURLEncoding, "%F0%9F%A4%93%F0%9F%98%8E")
+    XCTAssertEqual("123".anw_addingFormURLEncoding, "123")
+    XCTAssertEqual("abc123*-._".anw_addingFormURLEncoding, "abc123*-._")
   }
 }

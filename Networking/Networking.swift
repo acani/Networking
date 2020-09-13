@@ -7,8 +7,8 @@ open class API {
   public let credentials: String
   open var accessToken: String?
   open var refreshToken: String?
-  weak var refreshAccessTokenDataTask: URLSessionDataTask?
-  open var queuedRequests: [(URLRequest, (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void)]
+  weak var refreshSessionDataTask: URLSessionDataTask?
+  open var queuedRequests: [(URLRequest, (Any?, HTTPURLResponse?, NetworkingError?) -> Void)]
 
   public init(baseURL: URL, versionPath: String? = nil, credentials: String) {
     let configuration = URLSessionConfiguration.default
@@ -20,10 +20,16 @@ open class API {
     queuedRequests = []
   }
 
-  open func request(_ HTTPMethod: String, _ path: String, _ fields: [String: String]? = nil, _ JPEGData: Data? = nil, authenticated: Bool = false) -> URLRequest {
+  open func request(
+    _ httpMethod: String,
+    _ path: String,
+    _ fields: [String: String]? = nil,
+    _ jpegData: Data? = nil,
+    authenticated: Bool = false
+  ) -> URLRequest {
     let versionedPath = versionPath != nil ? versionPath!+path : path
     let requestURL = URL(string: versionedPath, relativeTo: baseURL)!
-    var request = HTTP.request(HTTPMethod, requestURL, fields, JPEGData)
+    var request = HTTP.request(httpMethod, requestURL, fields, jpegData)
     if !authenticated {
       request.anw_setBasicAuth(with: credentials)
     } else {
@@ -32,8 +38,10 @@ open class API {
     return request
   }
 
-  open func dataTask(with request: URLRequest, completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
-    HTTP.networkActivityIndicatorVisible = true
+  open func dataTask(
+    with request: URLRequest,
+    completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Void
+  ) -> URLSessionDataTask {
     return session.dataTask(with: request) { data, response, error in
       let object: Any?
       let httpResponse = response as! HTTPURLResponse?
@@ -46,16 +54,18 @@ open class API {
         if let jsonObject = self.parseJSON(with: data!) {
           object = jsonObject
           if httpResponse!.anw_isUserUnauthenticated {
-            return self.refreshAccessTokenAndRetryRequest(request, completionHandler: completionHandler)
+            self.refreshSessionAndRetryRequest(request, completionHandler: completionHandler)
+            return
           }
         } else {
           object = self.errorMessageDictionary(with: data!)
         }
         if httpResponse!.anw_hasErrorStatusCode {
+          let statusCode = httpResponse!.statusCode
           if let dictionary = object! as? [String: String] {
-            networkingError = NetworkingError(dictionary: dictionary, response: httpResponse!)
+            networkingError = NetworkingError(statusCode: statusCode, dictionary: dictionary)
           } else {
-            networkingError = NetworkingError(statusCode: httpResponse!.statusCode)
+            networkingError = NetworkingError(statusCode: statusCode)
           }
         } else {
           networkingError = nil
@@ -63,30 +73,32 @@ open class API {
       }
 
       completionHandler(object, httpResponse, networkingError)
-      HTTP.networkActivityIndicatorVisible = false
     }
   }
 
-  private func refreshAccessTokenAndRetryRequest(_ request: URLRequest, completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) {
+  private func refreshSessionAndRetryRequest(
+    _ request: URLRequest,
+    completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Void
+  ) {
     queuedRequests.append((request, completionHandler))
-    guard refreshAccessTokenDataTask == nil || refreshAccessTokenDataTask!.state == .completed else { return }
+    let isCompleted = refreshSessionDataTask == nil || refreshSessionDataTask!.state == .completed
+    guard isCompleted else { return }
     let refreshRequest = self.request("PUT", "/sessions", ["refresh_token": refreshToken!])
-    refreshAccessTokenDataTask = baseDataTask(with: refreshRequest) { object, response, error in
+    refreshSessionDataTask = baseDataTask(with: refreshRequest) { object, response, error in
       if let error = error {
         if error.isUnauthorized || error.isConflict {
           self.accessToken = nil
           self.refreshToken = nil
           let userInfo = [NetworkingError.userInfoKey: error]
           DispatchQueue.main.async {
-            NotificationCenter.default.post(name: API.didRefreshTokensNotification, object: self, userInfo: userInfo)
+            NotificationCenter.default
+              .post(name: API.didRefreshTokensNotification, object: self, userInfo: userInfo)
           }
         } else {
           for queuedRequest in self.queuedRequests {
             queuedRequest.1(object, response, error)
           }
         }
-        HTTP.networkActivityCount -= self.queuedRequests.count-1
-        HTTP.networkActivityIndicatorVisible = false
         self.queuedRequests.removeAll()
       } else {
         let dictionary = object! as! [String: String]
@@ -98,7 +110,7 @@ open class API {
         }
       }
     }
-    refreshAccessTokenDataTask!.resume()
+    refreshSessionDataTask!.resume()
   }
 
   private func sendQueuedRequests() {
@@ -107,12 +119,14 @@ open class API {
       updatedRequest.anw_setAccessToken(accessToken!)
       self.baseDataTask(with: updatedRequest) { object, response, error in
         completionHandler(object, response, error)
-        HTTP.networkActivityIndicatorVisible = false
       }.resume()
     }
   }
 
-  open func baseDataTask(with request: URLRequest, completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Swift.Void) -> URLSessionDataTask {
+  open func baseDataTask(
+    with request: URLRequest,
+    completionHandler: @escaping (Any?, HTTPURLResponse?, NetworkingError?) -> Void
+  ) -> URLSessionDataTask {
     return session.dataTask(with: request) { data, response, error in
       let object: Any?
       let httpResponse = response as! HTTPURLResponse?
@@ -128,8 +142,10 @@ open class API {
           object = self.errorMessageDictionary(with: data!)
         }
         if httpResponse!.anw_hasErrorStatusCode {
-          let dictionary = object! as! [String: String]
-          networkingError = NetworkingError(dictionary: dictionary, response: httpResponse!)
+          networkingError = NetworkingError(
+            statusCode: httpResponse!.statusCode,
+            dictionary: (object! as! [String: String])
+          )
         } else {
           networkingError = nil
         }
@@ -151,38 +167,32 @@ open class API {
     }
   }
 
-  public static let didRefreshTokensNotification = Notification.Name("APIDidRefreshTokensNotification")
+  public static let didRefreshTokensNotification =
+    Notification.Name("APIDidRefreshTokensNotification")
 }
 
 open class HTTP {
-  fileprivate static var networkActivityCount: Int = 0
-
-  public static var networkActivityIndicatorVisible: Bool {
-    get { return networkActivityCount > 0 }
-    set(visible) {
-      networkActivityCount += visible ? 1 : -1
-      precondition(networkActivityCount >= 0)
-      DispatchQueue.main.async {
-        UIApplication.shared.isNetworkActivityIndicatorVisible = (networkActivityCount > 0)
-      }
-    }
-  }
-
-  public static func request(_ HTTPMethod: String, _ url: Foundation.URL, _ fields: [String: String]? = nil, _ JPEGData: Data? = nil) -> URLRequest {
+  public static func request(
+    _ httpMethod: String,
+    _ url: Foundation.URL,
+    _ fields: [String: String]? = nil,
+    _ jpegData: Data? = nil
+  ) -> URLRequest {
     var request = URLRequest(url: url)
-    request.httpMethod = HTTPMethod
+    request.httpMethod = httpMethod
 
-    guard let JPEGData = JPEGData else {
+    let contentType = "Content-Type"
+    if jpegData == nil {
       if let fields = fields {
-        request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: contentType)
         request.httpBody = formHTTPBody(withFields: fields)
       }
-      return request
+    } else {
+      let boundary = multipartBoundary()
+      request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: contentType)
+      request.httpBody = multipartBodyData(boundary, fields, jpegData!)
     }
 
-    let boundary = multipartBoundary()
-    request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-    request.httpBody = multipartBodyData(boundary, fields, JPEGData)
     return request
   }
 
@@ -200,7 +210,11 @@ open class HTTP {
     return "-----AcaniFormBoundary" + String.anw_random(withLength: 16)
   }
 
-  private static func multipartBodyData(_ boundary: String, _ fields: [String: String]? = nil, _ JPEGData: Data) -> Data {
+  private static func multipartBodyData(
+    _ boundary: String,
+    _ fields: [String: String]? = nil,
+    _ JPEGData: Data
+  ) -> Data {
     var bodyString = ""
     let hh = "--", rn = "\r\n"
 
@@ -255,18 +269,24 @@ extension HTTPURLResponse {
 
 extension String {
   public static func anw_random(withLength length: Int) -> String {
-    let alphabet = "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" // 64 characters
-    return String((0..<length).map { _ -> Character in
-      return alphabet[alphabet.index(alphabet.startIndex, offsetBy: Int(arc4random_uniform(64)))]  // <^ connected
-    })
+    let alphabet = [
+      "-",
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+      "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+      "_",
+      "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+      "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    ]
+    return (0..<length).map { _ -> String in alphabet.randomElement()! }.joined()
   }
 
-  // Percent encode all characters except alphanumerics, "*", "-", ".", and "_". Replace " " with "+".
   // http://www.w3.org/TR/html5/forms.html#application/x-www-form-urlencoded-encoding-algorithm
   public var anw_addingFormURLEncoding: String {
-    let characterSet = NSMutableCharacterSet.alphanumeric()
-    characterSet.addCharacters(in: "*-._ ")
-    return addingPercentEncoding(withAllowedCharacters: characterSet as CharacterSet)!.replacingOccurrences(of: " ", with: "+")
+    var characterSet = CharacterSet.urlQueryAllowed
+    characterSet.insert(charactersIn: " ")
+    return addingPercentEncoding(withAllowedCharacters: characterSet)!
+      .replacingOccurrences(of: " ", with: "+")
   }
 }
 
@@ -289,20 +309,12 @@ public struct NetworkingError: Error {
     type = nil
   }
 
-  public init(statusCode: Int) {
+  public init(statusCode: Int, dictionary: [String: String]? = nil) {
     isAPIError = true
     code = statusCode
-    title = ""
-    message = nil
-    type = nil
-  }
-
-  public init(dictionary: [String: String], response: HTTPURLResponse) {
-    isAPIError = true
-    code = response.statusCode
-    title = dictionary["title"] ?? ""
-    message = dictionary["message"]
-    type = dictionary["type"]
+    title = dictionary?["title"] ?? ""
+    message = dictionary?["message"]
+    type = dictionary?["type"]
   }
 
   public static let userInfoKey = "NetworkingErrorUserInfoKey"
@@ -310,6 +322,9 @@ public struct NetworkingError: Error {
 
 import Alerts
 
-public func alertNetworkingError(_ error: NetworkingError, handler: ((UIAlertAction) -> Swift.Void)? = nil) {
+public func alertNetworkingError(
+  _ error: NetworkingError,
+  handler: ((UIAlertAction) -> Void)? = nil
+) {
   alertTitle(error.title, message: error.message, handler: handler)
 }
