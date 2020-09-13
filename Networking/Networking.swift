@@ -285,6 +285,7 @@ extension String {
   public var anw_addingFormURLEncoding: String {
     var characterSet = CharacterSet.urlQueryAllowed
     characterSet.insert(charactersIn: " ")
+    characterSet.remove(charactersIn: "&+=")
     return addingPercentEncoding(withAllowedCharacters: characterSet)!
       .replacingOccurrences(of: " ", with: "+")
   }
